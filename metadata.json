@@ -1,0 +1,8 @@
+
+{
+  "name": "LuxeSalon Customer App",
+  "description": "A premium salon booking and management application for customers, featuring appointment scheduling, service browsing, and loyalty tracking.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

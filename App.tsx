@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Appointment, Notification, Page } from './types';
 import Login from './pages/Login';
 import Home from './pages/Home';
@@ -60,6 +60,20 @@ const App: React.FC = () => {
     setNotifications([newNotif, ...notifications]);
   };
 
+  const updateAppointment = (updatedAppt: Appointment) => {
+    const updated = appointments.map(a => a.id === updatedAppt.id ? updatedAppt : a);
+    setAppointments(updated);
+    localStorage.setItem('salon_appointments', JSON.stringify(updated));
+    
+    setNotifications([{
+      id: Math.random().toString(36).substr(2, 9),
+      title: 'Booking Rescheduled',
+      message: `Your appointment has been moved to ${updatedAppt.date} at ${updatedAppt.time}.`,
+      type: 'booking',
+      timestamp: new Date()
+    }, ...notifications]);
+  };
+
   const cancelAppointment = (id: string) => {
     const updated = appointments.filter(a => a.id !== id);
     setAppointments(updated);
@@ -85,6 +99,7 @@ const App: React.FC = () => {
         <AppointmentPage 
           appointments={appointments} 
           onAdd={addAppointment} 
+          onUpdate={updateAppointment}
           onCancel={cancelAppointment}
         />
       );
@@ -103,12 +118,12 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen pb-20 max-w-md mx-auto bg-white shadow-xl relative">
+    <div className="flex flex-col min-h-screen bg-white shadow-xl relative w-full max-w-md mx-auto overflow-x-hidden">
       <Header 
         notificationCount={notifications.length} 
         onNotificationClick={() => setCurrentPage('notifications')}
       />
-      <main className="flex-grow overflow-y-auto">
+      <main className="flex-1 w-full pb-24 overflow-y-auto">
         {renderPage()}
       </main>
       <BottomNav current={currentPage} onNavigate={setCurrentPage} />

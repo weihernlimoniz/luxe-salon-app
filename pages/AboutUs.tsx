@@ -4,42 +4,39 @@ import { MOCK_OUTLETS, MOCK_STYLISTS } from '../constants';
 import { Phone, MapPin, Instagram, Facebook } from 'lucide-react';
 
 const AboutUs: React.FC = () => {
-  const primaryOutlet = MOCK_OUTLETS[0];
-
   return (
     <div className="pb-8">
       {/* Salon Hero */}
       <div className="relative h-64 overflow-hidden">
-        <img src={primaryOutlet.photo} className="w-full h-full object-cover" />
+        <img src={MOCK_OUTLETS[0].photo} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center p-6 text-center">
-          <h2 className="text-white text-3xl font-serif font-bold mb-2">LuxeSalon</h2>
-          <p className="text-white/80 max-w-xs text-sm">Elevating your grooming experience through art and expertise.</p>
+          <h2 className="text-white text-3xl font-serif font-bold mb-2">Oviss Salon</h2>
+          <p className="text-white/80 max-w-xs text-sm">Premium hair artistry across Malaysia.</p>
         </div>
       </div>
 
-      {/* Contact Info */}
-      <section className="px-6 py-8 bg-white">
-        <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-6">Find Us</h3>
-        <div className="space-y-6">
-          <div className="flex gap-4">
-            <div className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-gray-600">
-              <MapPin size={20} />
-            </div>
-            <div>
-              <div className="font-bold text-gray-900">{primaryOutlet.name}</div>
-              <p className="text-sm text-gray-500">{primaryOutlet.address}</p>
+      {/* Outlets Detail Cards */}
+      <section className="px-6 py-8 space-y-6">
+        <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-2">Our Locations</h3>
+        {MOCK_OUTLETS.map(outlet => (
+          <div key={outlet.id} className="bg-gray-50 rounded-2xl p-6 border border-gray-100 shadow-sm">
+            <h4 className="font-serif font-bold text-xl text-gray-900 mb-4">{outlet.name}</h4>
+            <div className="space-y-4">
+              <div className="flex gap-4">
+                <div className="w-8 h-8 bg-white rounded-full flex-shrink-0 flex items-center justify-center text-gray-400 shadow-sm">
+                  <MapPin size={16} />
+                </div>
+                <p className="text-sm text-gray-600">{outlet.address}</p>
+              </div>
+              <div className="flex gap-4">
+                <div className="w-8 h-8 bg-white rounded-full flex-shrink-0 flex items-center justify-center text-gray-400 shadow-sm">
+                  <Phone size={16} />
+                </div>
+                <p className="text-sm text-gray-600 font-bold">{outlet.contact}</p>
+              </div>
             </div>
           </div>
-          <div className="flex gap-4">
-            <div className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-gray-600">
-              <Phone size={20} />
-            </div>
-            <div>
-              <div className="font-bold text-gray-900">Contact Number</div>
-              <p className="text-sm text-gray-500">{primaryOutlet.contact}</p>
-            </div>
-          </div>
-        </div>
+        ))}
 
         <div className="mt-8 flex gap-4">
           <button className="flex-1 py-3 bg-gray-50 rounded-xl flex items-center justify-center gap-2 font-bold text-sm">
@@ -53,7 +50,7 @@ const AboutUs: React.FC = () => {
 
       {/* Stylists */}
       <section className="px-6 py-8">
-        <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-6">Our Experts</h3>
+        <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-6">Our Stylists</h3>
         <div className="grid grid-cols-1 gap-8">
           {MOCK_STYLISTS.map(stylist => (
             <div key={stylist.id} className="flex gap-6 group">
@@ -62,7 +59,7 @@ const AboutUs: React.FC = () => {
               </div>
               <div className="flex flex-col justify-center">
                 <span className="font-serif font-bold text-lg text-gray-900">{stylist.name}</span>
-                <span className="text-sm font-bold text-black bg-gray-100 px-2 py-0.5 rounded w-fit mb-2 uppercase tracking-tight">
+                <span className="text-xs font-bold text-white bg-black px-2 py-0.5 rounded w-fit mb-2 uppercase tracking-tight">
                   {stylist.title}
                 </span>
                 {stylist.bio && <p className="text-xs text-gray-500 leading-relaxed italic">{stylist.bio}</p>}

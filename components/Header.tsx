@@ -12,10 +12,10 @@ const Header: React.FC<HeaderProps> = ({ notificationCount, onNotificationClick 
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md px-6 py-4 flex items-center justify-between border-b border-gray-100">
       <div className="flex items-center gap-2">
         <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
-          <span className="text-white font-serif font-bold text-lg">L</span>
+          <span className="text-white font-serif font-bold text-lg">O</span>
         </div>
         <h1 className="text-xl font-serif font-bold tracking-tight text-gray-900">
-          LuxeSalon
+          Oviss Salon
         </h1>
       </div>
       

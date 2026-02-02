@@ -1,44 +1,45 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Appointment, Outlet, Stylist, Service } from '../types';
 import { MOCK_OUTLETS, MOCK_STYLISTS, MOCK_SERVICES } from '../constants';
-import { ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Scissors, User as UserIcon, X, Check, ChevronDown } from 'lucide-react';
+import { ChevronRight, Calendar as CalendarIcon, MapPin, Scissors, User as UserIcon, X, Check, ChevronDown, AlertTriangle } from 'lucide-react';
 
 interface AppointmentPageProps {
   appointments: Appointment[];
   onAdd: (appt: Appointment) => void;
+  onUpdate: (appt: Appointment) => void;
   onCancel: (id: string) => void;
 }
 
-const AppointmentPage: React.FC<AppointmentPageProps> = ({ appointments, onAdd, onCancel }) => {
+const AppointmentPage: React.FC<AppointmentPageProps> = ({ appointments, onAdd, onUpdate, onCancel }) => {
   const [isBooking, setIsBooking] = useState(false);
   const [step, setStep] = useState<'outlet' | 'details'>('outlet');
-  
-  // Selection state
+  const [cancelTarget, setCancelTarget] = useState<string | null>(null);
+
+  const [editingApptId, setEditingApptId] = useState<string | null>(null);
   const [selectedOutlet, setSelectedOutlet] = useState<Outlet | null>(null);
   const [selectedStylist, setSelectedStylist] = useState<Stylist | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
 
-  // Month/Year Picker State
   const today = new Date();
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
-  const upcomingAppts = appointments.filter(a => a.status === 'upcoming');
-
   const months = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
   ];
+  const years = Array.from({ length: 5 }, (_, i) => today.getFullYear() + i);
 
-  const years = Array.from({ length: 3 }, (_, i) => today.getFullYear() + i);
+  const upcomingAppts = appointments.filter(a => a.status === 'upcoming');
 
   const resetBooking = () => {
     setIsBooking(false);
     setStep('outlet');
+    setEditingApptId(null);
     setSelectedOutlet(null);
     setSelectedStylist(null);
     setSelectedDate('');
@@ -48,11 +49,26 @@ const AppointmentPage: React.FC<AppointmentPageProps> = ({ appointments, onAdd, 
     setViewYear(today.getFullYear());
   };
 
+  const handleReschedule = (appt: Appointment) => {
+    const outlet = MOCK_OUTLETS.find(o => o.id === appt.outletId) || null;
+    const stylist = MOCK_STYLISTS.find(s => s.id === appt.stylistId) || null;
+    setEditingApptId(appt.id);
+    setSelectedOutlet(outlet);
+    setSelectedStylist(stylist);
+    setSelectedDate(appt.date);
+    setSelectedTime(appt.time);
+    setSelectedServiceIds(appt.serviceIds);
+    const apptDate = new Date(appt.date);
+    setViewMonth(apptDate.getMonth());
+    setViewYear(apptDate.getFullYear());
+    setIsBooking(true);
+    setStep('details');
+  };
+
   const handleConfirm = () => {
     if (!selectedOutlet || !selectedDate || !selectedTime || selectedServiceIds.length === 0) return;
-    
-    const newAppt: Appointment = {
-      id: Math.random().toString(36).substr(2, 9),
+    const apptData: Appointment = {
+      id: editingApptId || Math.random().toString(36).substr(2, 9),
       userId: 'u1',
       outletId: selectedOutlet.id,
       stylistId: selectedStylist ? selectedStylist.id : 'no-preference',
@@ -61,18 +77,10 @@ const AppointmentPage: React.FC<AppointmentPageProps> = ({ appointments, onAdd, 
       time: selectedTime,
       status: 'upcoming'
     };
-    
-    onAdd(newAppt);
+    if (editingApptId) onUpdate(apptData); else onAdd(apptData);
     resetBooking();
   };
 
-  const toggleService = (id: string) => {
-    setSelectedServiceIds(prev => 
-      prev.includes(id) ? prev.filter(sId => sId !== id) : [...prev, id]
-    );
-  };
-
-  // Generate days for the selected month and year
   const daysInMonth = useMemo(() => {
     const date = new Date(viewYear, viewMonth, 1);
     const days = [];
@@ -93,16 +101,18 @@ const AppointmentPage: React.FC<AppointmentPageProps> = ({ appointments, onAdd, 
 
   if (isBooking) {
     return (
-      <div className="min-h-screen bg-white pb-32 px-6 pt-6 relative">
+      <div className="min-h-screen bg-white pb-32 px-6 pt-6 relative w-full animate-in slide-in-from-bottom duration-300">
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-2xl font-serif font-bold">New Appointment</h2>
-          <button onClick={resetBooking} className="p-2 bg-gray-50 rounded-full">
+          <h2 className="text-2xl font-serif font-bold">
+            {editingApptId ? 'Edit Appointment' : 'New Appointment'}
+          </h2>
+          <button onClick={resetBooking} className="p-2 bg-gray-50 rounded-full text-gray-400 hover:text-black">
             <X size={20} />
           </button>
         </div>
 
         {step === 'outlet' ? (
-          <div className="space-y-4">
+          <div className="space-y-4 w-full">
             <h3 className="font-semibold text-gray-900 mb-2">Select Outlet</h3>
             {MOCK_OUTLETS.map(outlet => (
               <button
@@ -111,26 +121,35 @@ const AppointmentPage: React.FC<AppointmentPageProps> = ({ appointments, onAdd, 
                   setSelectedOutlet(outlet);
                   setStep('details');
                 }}
-                className="w-full flex items-start gap-4 p-4 rounded-xl border border-gray-100 hover:border-black transition-all text-left"
+                className="w-full p-6 rounded-2xl border border-gray-100 hover:border-black transition-all text-left bg-gray-50 flex items-center justify-between group"
               >
-                <img src={outlet.photo} className="w-16 h-16 rounded-lg object-cover" />
-                <div>
-                  <div className="font-bold">{outlet.name}</div>
-                  <div className="text-xs text-gray-500 mt-1 line-clamp-1">{outlet.address}</div>
-                </div>
+                <span className="font-bold text-lg text-gray-900 group-hover:text-black">{outlet.name}</span>
+                <ChevronRight size={20} className="text-gray-300 group-hover:text-black" />
               </button>
             ))}
           </div>
         ) : (
-          <div className="space-y-8 animate-in slide-in-from-right duration-300">
-            {/* 1. Stylist Selection */}
+          <div className="space-y-8 w-full">
+            {/* Stylist - No Preference last */}
             <div>
               <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-4">Choose Stylist</h3>
               <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                {MOCK_STYLISTS.map(stylist => (
+                  <button
+                    key={stylist.id}
+                    onClick={() => setSelectedStylist(stylist)}
+                    className={`flex-shrink-0 flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${
+                      selectedStylist?.id === stylist.id ? 'border-black bg-black text-white shadow-lg' : 'border-gray-100 bg-gray-50'
+                    }`}
+                  >
+                    <img src={stylist.photo} className="w-14 h-14 rounded-full object-cover" />
+                    <span className="text-xs font-bold whitespace-nowrap">{stylist.name}</span>
+                  </button>
+                ))}
                 <button
                   onClick={() => setSelectedStylist(null)}
                   className={`flex-shrink-0 flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${
-                    selectedStylist === null ? 'border-black bg-black text-white' : 'border-gray-100 bg-gray-50'
+                    selectedStylist === null ? 'border-black bg-black text-white shadow-lg' : 'border-gray-100 bg-gray-50'
                   }`}
                 >
                   <div className={`w-14 h-14 rounded-full flex items-center justify-center ${selectedStylist === null ? 'bg-white/20' : 'bg-gray-200'}`}>
@@ -138,28 +157,16 @@ const AppointmentPage: React.FC<AppointmentPageProps> = ({ appointments, onAdd, 
                   </div>
                   <span className="text-xs font-bold whitespace-nowrap">No Preference</span>
                 </button>
-                {MOCK_STYLISTS.map(stylist => (
-                  <button
-                    key={stylist.id}
-                    onClick={() => setSelectedStylist(stylist)}
-                    className={`flex-shrink-0 flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${
-                      selectedStylist?.id === stylist.id ? 'border-black bg-black text-white' : 'border-gray-100 bg-gray-50'
-                    }`}
-                  >
-                    <img src={stylist.photo} className="w-14 h-14 rounded-full object-cover" />
-                    <span className="text-xs font-bold whitespace-nowrap">{stylist.name.split(' ')[0]}</span>
-                  </button>
-                ))}
               </div>
             </div>
 
-            {/* 2. Calendar Selection with Selectable Month/Year */}
+            {/* Date Selection */}
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400">Select Date</h3>
                 <button 
                   onClick={() => setIsPickerOpen(true)}
-                  className="flex items-center gap-1 text-sm font-bold text-black bg-gray-50 px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                  className="flex items-center gap-1 text-sm font-bold text-black bg-gray-50 px-3 py-1.5 rounded-full"
                 >
                   {months[viewMonth]} {viewYear}
                   <ChevronDown size={14} />
@@ -170,21 +177,16 @@ const AppointmentPage: React.FC<AppointmentPageProps> = ({ appointments, onAdd, 
                   const d = new Date(date);
                   const isSelected = selectedDate === date;
                   const isPast = d < new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                  
                   return (
                     <button
                       key={date}
                       disabled={isPast}
                       onClick={() => setSelectedDate(date)}
                       className={`flex-shrink-0 w-16 h-20 flex flex-col items-center justify-center rounded-2xl border transition-all ${
-                        isSelected 
-                          ? 'border-black bg-black text-white' 
-                          : isPast 
-                            ? 'border-gray-50 bg-gray-50 text-gray-300 cursor-not-allowed'
-                            : 'border-gray-100 bg-gray-50'
+                        isSelected ? 'border-black bg-black text-white shadow-lg scale-105' : isPast ? 'border-gray-50 bg-gray-50 text-gray-300 cursor-not-allowed' : 'border-gray-100 bg-gray-50'
                       }`}
                     >
-                      <span className="text-[10px] uppercase">{d.toLocaleDateString('en', { weekday: 'short' })}</span>
+                      <span className="text-[10px] uppercase opacity-70">{d.toLocaleDateString('en', { weekday: 'short' })}</span>
                       <span className="text-xl font-bold">{d.getDate()}</span>
                     </button>
                   );
@@ -192,7 +194,7 @@ const AppointmentPage: React.FC<AppointmentPageProps> = ({ appointments, onAdd, 
               </div>
             </div>
 
-            {/* Month/Year Picker Modal */}
+            {/* Scroll-type Month/Year Picker Modal */}
             {isPickerOpen && (
               <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-end justify-center">
                 <div className="bg-white w-full max-w-md rounded-t-3xl p-6 animate-in slide-in-from-bottom duration-300 shadow-2xl">
@@ -203,47 +205,52 @@ const AppointmentPage: React.FC<AppointmentPageProps> = ({ appointments, onAdd, 
                     </button>
                   </div>
                   
-                  <div className="grid grid-cols-3 gap-2 mb-6">
-                    {months.map((m, idx) => (
-                      <button
-                        key={m}
-                        onClick={() => setViewMonth(idx)}
-                        className={`py-2 text-sm rounded-xl border transition-all ${
-                          viewMonth === idx ? 'bg-black text-white border-black font-bold' : 'bg-gray-50 border-gray-100 text-gray-600'
-                        }`}
-                      >
-                        {m.slice(0, 3)}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-2 mb-8">
-                    {years.map(y => (
-                      <button
-                        key={y}
-                        onClick={() => setViewYear(y)}
-                        className={`flex-1 py-3 text-sm rounded-xl border transition-all ${
-                          viewYear === y ? 'bg-black text-white border-black font-bold' : 'bg-gray-50 border-gray-100 text-gray-600'
-                        }`}
-                      >
-                        {y}
-                      </button>
-                    ))}
+                  <div className="flex gap-4 h-48 overflow-hidden relative border-y border-gray-100 my-4">
+                    {/* Month Scroll */}
+                    <div className="flex-1 overflow-y-auto scroll-smooth snap-y snap-mandatory scrollbar-hide py-20">
+                      {months.map((m, idx) => (
+                        <button
+                          key={m}
+                          onClick={() => setViewMonth(idx)}
+                          className={`w-full h-12 flex items-center justify-center snap-center transition-all ${
+                            viewMonth === idx ? 'text-black font-bold text-lg' : 'text-gray-300'
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Year Scroll */}
+                    <div className="flex-1 overflow-y-auto scroll-smooth snap-y snap-mandatory scrollbar-hide py-20">
+                      {years.map(y => (
+                        <button
+                          key={y}
+                          onClick={() => setViewYear(y)}
+                          className={`w-full h-12 flex items-center justify-center snap-center transition-all ${
+                            viewYear === y ? 'text-black font-bold text-lg' : 'text-gray-300'
+                          }`}
+                        >
+                          {y}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Center highlight bar */}
+                    <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 h-12 border-y-2 border-black/10 pointer-events-none"></div>
                   </div>
 
                   <button
                     onClick={() => setIsPickerOpen(false)}
-                    className="w-full bg-black text-white py-4 rounded-xl font-bold"
+                    className="w-full bg-black text-white py-4 rounded-xl font-bold mt-4"
                   >
-                    Done
+                    Set Date
                   </button>
                 </div>
               </div>
             )}
 
-            {/* 3. Time Slots */}
+            {/* Time Slots */}
             {selectedDate && (
-              <div>
+              <div className="animate-in fade-in duration-500">
                 <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-4">Available Time</h3>
                 <div className="grid grid-cols-4 gap-2">
                   {availableSlots.map(time => (
@@ -251,7 +258,7 @@ const AppointmentPage: React.FC<AppointmentPageProps> = ({ appointments, onAdd, 
                       key={time}
                       onClick={() => setSelectedTime(time)}
                       className={`py-3 rounded-xl border text-sm font-bold transition-all ${
-                        selectedTime === time ? 'border-black bg-black text-white' : 'border-gray-100 bg-gray-50'
+                        selectedTime === time ? 'border-black bg-black text-white shadow-md' : 'border-gray-100 bg-gray-50'
                       }`}
                     >
                       {time}
@@ -261,9 +268,9 @@ const AppointmentPage: React.FC<AppointmentPageProps> = ({ appointments, onAdd, 
               </div>
             )}
 
-            {/* 4. Multiple Service Selection */}
+            {/* Services */}
             {selectedTime && (
-              <div>
+              <div className="animate-in fade-in duration-500">
                 <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-4">Select Services</h3>
                 <div className="space-y-2">
                   {MOCK_SERVICES.map(service => {
@@ -271,9 +278,13 @@ const AppointmentPage: React.FC<AppointmentPageProps> = ({ appointments, onAdd, 
                     return (
                       <button
                         key={service.id}
-                        onClick={() => toggleService(service.id)}
+                        onClick={() => {
+                          setSelectedServiceIds(prev => 
+                            prev.includes(service.id) ? prev.filter(id => id !== service.id) : [...prev, service.id]
+                          );
+                        }}
                         className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
-                          isSelected ? 'border-black bg-gray-50' : 'border-gray-100 bg-gray-50'
+                          isSelected ? 'border-black bg-gray-50 ring-1 ring-black' : 'border-gray-100 bg-gray-50'
                         }`}
                       >
                         <div className="flex items-center gap-3">
@@ -282,7 +293,7 @@ const AppointmentPage: React.FC<AppointmentPageProps> = ({ appointments, onAdd, 
                           </div>
                           <span className={`font-semibold ${isSelected ? 'text-black' : 'text-gray-700'}`}>{service.name}</span>
                         </div>
-                        <span className={`text-sm font-bold ${isSelected ? 'text-black' : 'text-gray-500'}`}>RM{service.price.toFixed(2)}</span>
+                        <span className={`text-sm font-bold ${isSelected ? 'text-black' : 'text-gray-500'}`}>RM{service.price.toFixed(0)}</span>
                       </button>
                     );
                   })}
@@ -290,19 +301,20 @@ const AppointmentPage: React.FC<AppointmentPageProps> = ({ appointments, onAdd, 
               </div>
             )}
 
-            {/* Confirm Footer with Total */}
             {selectedServiceIds.length > 0 && (
-              <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-100 p-6 z-[60] shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-gray-500 text-sm font-medium">{selectedServiceIds.length} service{selectedServiceIds.length > 1 ? 's' : ''} selected</span>
-                  <span className="text-xl font-bold text-black">Total: RM{totalSelectedPrice.toFixed(2)}</span>
+              <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-6 z-[60] shadow-2xl">
+                <div className="max-w-md mx-auto">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-gray-500 text-sm font-medium">{selectedServiceIds.length} items</span>
+                    <span className="text-xl font-bold text-black">Total: RM{totalSelectedPrice.toFixed(2)}</span>
+                  </div>
+                  <button
+                    onClick={handleConfirm}
+                    className="w-full bg-black text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                  >
+                    {editingApptId ? 'Update Booking' : 'Confirm Booking'} <ChevronRight size={20} />
+                  </button>
                 </div>
-                <button
-                  onClick={handleConfirm}
-                  className="w-full bg-black text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2"
-                >
-                  Confirm Booking <ChevronRight size={20} />
-                </button>
               </div>
             )}
           </div>
@@ -312,62 +324,54 @@ const AppointmentPage: React.FC<AppointmentPageProps> = ({ appointments, onAdd, 
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 w-full min-h-full">
       <div className="mb-8">
         <h2 className="text-2xl font-serif font-bold text-gray-900 mb-1">Your Appointments</h2>
-        <p className="text-gray-500 text-sm">Manage your grooming schedule</p>
+        <p className="text-gray-500 text-sm">Experience the art of grooming</p>
       </div>
 
-      <section className="mb-10">
+      <section className="mb-10 w-full">
         <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Upcoming</h3>
         {upcomingAppts.length === 0 ? (
           <div className="bg-gray-50 rounded-2xl p-8 text-center border border-dashed border-gray-200">
             <p className="text-gray-400 text-sm">No appointments scheduled</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 w-full">
             {upcomingAppts.map(appt => {
               const outlet = MOCK_OUTLETS.find(o => o.id === appt.outletId);
               const services = MOCK_SERVICES.filter(s => appt.serviceIds.includes(s.id));
               const stylist = MOCK_STYLISTS.find(s => s.id === appt.stylistId);
-              
               return (
-                <div key={appt.id} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 p-4">
-                    <button 
-                      onClick={() => onCancel(appt.id)}
-                      className="text-gray-400 hover:text-red-500 transition-colors"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
+                <div key={appt.id} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm relative w-full">
                   <div className="flex items-start gap-4 mb-4">
                     <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center text-black">
                       <CalendarIcon size={24} />
                     </div>
-                    <div className="pr-6">
-                      <div className="font-bold text-lg leading-tight">
+                    <div className="pr-2 flex-1">
+                      <div className="font-bold text-lg leading-tight text-gray-900">
                         {services.map(s => s.name).join(', ')}
                       </div>
                       <div className="text-gray-500 text-sm flex items-center gap-1 mt-1">
-                        <MapPin size={12} /> {outlet?.name}
+                        <MapPin size={12} className="opacity-50" /> {outlet?.name}
                       </div>
                       <div className="text-gray-400 text-xs mt-1 flex items-center gap-1">
-                        <UserIcon size={12} /> {stylist ? stylist.name : 'No Stylist Preference'}
+                        <UserIcon size={12} className="opacity-50" /> {stylist ? stylist.name : 'No Stylist Preference'}
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-6 border-t border-gray-50 pt-4">
+                  <div className="flex items-center gap-4 border-t border-gray-50 pt-4">
                     <div className="flex flex-col">
-                      <span className="text-[10px] uppercase text-gray-400">Date</span>
-                      <span className="font-bold">{appt.date}</span>
+                      <span className="text-[10px] uppercase text-gray-400 font-bold">Date</span>
+                      <span className="font-bold text-sm text-gray-900">{appt.date}</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-[10px] uppercase text-gray-400">Time</span>
-                      <span className="font-bold">{appt.time}</span>
+                      <span className="text-[10px] uppercase text-gray-400 font-bold">Time</span>
+                      <span className="font-bold text-sm text-gray-900">{appt.time}</span>
                     </div>
-                    <div className="ml-auto">
-                      <button className="text-black text-xs font-bold px-3 py-1 bg-gray-50 rounded-full hover:bg-black hover:text-white transition-colors">Reschedule</button>
+                    <div className="ml-auto flex flex-col gap-2">
+                      <button onClick={() => handleReschedule(appt)} className="text-black text-[10px] font-bold px-4 py-1.5 bg-gray-50 rounded-full border border-gray-200">Reschedule</button>
+                      <button onClick={() => setCancelTarget(appt.id)} className="text-red-500 text-[10px] font-bold px-4 py-1.5 bg-red-50 rounded-full border border-red-100">Cancel</button>
                     </div>
                   </div>
                 </div>
@@ -377,14 +381,28 @@ const AppointmentPage: React.FC<AppointmentPageProps> = ({ appointments, onAdd, 
         )}
       </section>
 
-      <div className="space-y-3">
-        <button 
-          onClick={() => setIsBooking(true)}
-          className="w-full bg-black text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg shadow-black/10 hover:bg-gray-900 transition-colors"
-        >
-          <Scissors size={20} /> New Appointment
-        </button>
-      </div>
+      <button 
+        onClick={() => setIsBooking(true)}
+        className="w-full bg-black text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all"
+      >
+        <Scissors size={20} /> New Appointment
+      </button>
+
+      {cancelTarget && (
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-sm animate-in zoom-in duration-200 shadow-2xl">
+            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-500 mx-auto mb-6">
+              <AlertTriangle size={32} />
+            </div>
+            <h3 className="text-xl font-serif font-bold text-center mb-2">Cancel Appointment?</h3>
+            <p className="text-sm text-gray-500 text-center mb-8">Are you sure you want to cancel this booking?</p>
+            <div className="flex gap-3">
+              <button onClick={() => setCancelTarget(null)} className="flex-1 py-4 font-bold text-gray-400 bg-gray-50 rounded-2xl">No</button>
+              <button onClick={() => { onCancel(cancelTarget); setCancelTarget(null); }} className="flex-1 bg-red-500 text-white rounded-2xl py-4 font-bold">Yes</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

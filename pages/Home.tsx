@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { BANNER_IMAGE, MOCK_SERVICES } from '../constants';
-import { Scissors, DollarSign } from 'lucide-react';
+import { Scissors } from 'lucide-react';
 
 const Home: React.FC = () => {
   return (
@@ -16,7 +16,7 @@ const Home: React.FC = () => {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-6">
             <span className="text-white/80 text-xs font-bold uppercase tracking-widest mb-1">Seasonal Special</span>
-            <h2 className="text-white text-2xl font-serif font-bold leading-tight">Revitalize Your Look <br /> This Summer</h2>
+            <h2 className="text-white text-2xl font-serif font-bold leading-tight">Elevate Your Style <br /> at Oviss Salon</h2>
           </div>
         </div>
       </div>
@@ -48,19 +48,19 @@ const Home: React.FC = () => {
                 </span>
               </div>
               <div className="flex items-center gap-1 text-gray-900 font-bold bg-gray-50 px-3 py-1 rounded-full group-hover:bg-black group-hover:text-white transition-all">
-                <span className="text-xs opacity-60">RM</span>
-                <span>{service.price.toFixed(2)}</span>
+                <span className="text-[10px] opacity-60 mr-0.5">From RM</span>
+                <span>{service.price.toFixed(0)}</span>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Featured Quote/About Hint */}
+      {/* Featured Quote */}
       <div className="mt-12 px-6">
         <div className="bg-stone-50 rounded-3xl p-8 text-center border border-stone-100">
           <p className="font-serif italic text-gray-600 mb-4 leading-relaxed">
-            "Beauty begins the moment you decide to be yourself."
+            "Your hair is the crown you never take off."
           </p>
           <div className="w-12 h-0.5 bg-gray-200 mx-auto"></div>
         </div>
